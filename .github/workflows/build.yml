@@ -1,0 +1,35 @@
+name: Build and Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build exe
+        run: >
+          pyinstaller --onefile --windowed
+          --name "FFXIV_OTP_Login"
+          --hidden-import=win32crypt
+          --hidden-import=pyotp
+          --hidden-import=win32gui
+          --hidden-import=win32con
+          --hidden-import=win32process
+          --hidden-import=win32api
+          main.py
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/FFXIV_OTP_Login.exe
