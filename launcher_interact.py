@@ -57,7 +57,7 @@ def focus_window(hwnd: int) -> bool:
 
 
 def enter_otp_and_login(otp_code: str, launcher_title: str = "FINAL FANTASY XIV 繁體中文版",
-                        tab_count: int = 0, delay: float = 0.3) -> str:
+                        delay: float = 0.3) -> str:
     """
     Find the launcher, focus it, type the OTP, and press Enter.
     Returns a status message string.
@@ -70,11 +70,6 @@ def enter_otp_and_login(otp_code: str, launcher_title: str = "FINAL FANTASY XIV 
         return "無法將啟動器視窗帶到前景"
 
     time.sleep(max(delay, 0.5))
-
-    # Tab to the OTP field if needed
-    for _ in range(tab_count):
-        pyautogui.press("tab")
-        time.sleep(0.1)
 
     # Type the 6-digit OTP code (field should be empty on login page)
     pyautogui.typewrite(otp_code, interval=0.03)

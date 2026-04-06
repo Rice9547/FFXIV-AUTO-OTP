@@ -17,7 +17,6 @@ class App:
 
         self.secret = ""
         self.launcher_title = "FINAL FANTASY XIV 繁體中文版"
-        self.tab_count = 0
         self.delay = 0.3
         self.show_secret = False
 
@@ -30,7 +29,6 @@ class App:
         if config:
             self.secret = config["secret"]
             self.launcher_title = config["launcher_window_title"]
-            self.tab_count = config["tab_count_to_otp"]
             self.delay = config["delay_before_type"]
 
     def _build_ui(self):
@@ -73,17 +71,11 @@ class App:
         self.title_var = tk.StringVar(value=self.launcher_title)
         ttk.Entry(frame_settings, textvariable=self.title_var, width=30).grid(row=0, column=1, padx=5)
 
-        ttk.Label(frame_settings, text="Tab 次數:").grid(row=1, column=0, sticky="w", pady=(4, 0))
-        self.tab_var = tk.IntVar(value=self.tab_count)
-        ttk.Spinbox(frame_settings, from_=0, to=10, textvariable=self.tab_var, width=5).grid(
-            row=1, column=1, sticky="w", padx=5, pady=(4, 0)
-        )
-
-        ttk.Label(frame_settings, text="延遲秒數:").grid(row=2, column=0, sticky="w", pady=(4, 0))
+        ttk.Label(frame_settings, text="延遲秒數:").grid(row=1, column=0, sticky="w", pady=(4, 0))
         self.delay_var = tk.DoubleVar(value=self.delay)
         ttk.Spinbox(frame_settings, from_=0.1, to=3.0, increment=0.1,
                      textvariable=self.delay_var, width=5).grid(
-            row=2, column=1, sticky="w", padx=5, pady=(4, 0)
+            row=1, column=1, sticky="w", padx=5, pady=(4, 0)
         )
 
         # === Status Bar ===
@@ -108,10 +100,9 @@ class App:
 
         self.secret = secret
         self.launcher_title = self.title_var.get().strip() or "FINAL FANTASY XIV 繁體中文版"
-        self.tab_count = self.tab_var.get()
         self.delay = self.delay_var.get()
 
-        save_config(self.secret, self.launcher_title, self.tab_count, self.delay)
+        save_config(self.secret, self.launcher_title, self.delay)
         self.status_var.set("密鑰已儲存")
 
     def _update_otp_display(self):
@@ -143,14 +134,13 @@ class App:
 
     def _do_auto_login(self):
         otp = generate_otp(self.secret)
-        launcher_title = self.title_var.get().strip() or "FINAL FANTASY XIV"
-        tab_count = self.tab_var.get()
+        launcher_title = self.title_var.get().strip() or "FINAL FANTASY XIV 繁體中文版"
         delay = self.delay_var.get()
 
         self.status_var.set("正在自動登入...")
 
         def run():
-            result = enter_otp_and_login(otp, launcher_title, tab_count, delay)
+            result = enter_otp_and_login(otp, launcher_title, delay=delay)
             self.root.after(0, lambda: self.status_var.set(result))
 
         threading.Thread(target=run, daemon=True).start()

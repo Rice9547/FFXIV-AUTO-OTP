@@ -46,12 +46,11 @@ def decrypt_secret(encrypted_b64: str) -> str:
 
 
 def save_config(secret: str, launcher_title: str = "FINAL FANTASY XIV 繁體中文版",
-                tab_count: int = 0, delay: float = 0.3) -> None:
+                delay: float = 0.3) -> None:
     """Save encrypted secret and settings to config file."""
     config = {
         "encrypted_secret": encrypt_secret(secret),
         "launcher_window_title": launcher_title,
-        "tab_count_to_otp": tab_count,
         "delay_before_type": delay,
     }
     config_path = get_config_path()
@@ -71,7 +70,6 @@ def load_config() -> dict | None:
         return {
             "secret": secret,
             "launcher_window_title": config.get("launcher_window_title", "FINAL FANTASY XIV 繁體中文版"),
-            "tab_count_to_otp": config.get("tab_count_to_otp", 0),
             "delay_before_type": config.get("delay_before_type", 0.3),
         }
     except Exception:
