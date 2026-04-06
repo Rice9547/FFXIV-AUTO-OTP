@@ -161,14 +161,7 @@ class App:
             self.time_var.set("剪貼簿中找不到 QR Code")
             return
 
-        if len(entries) == 1:
-            self.secret_var.set(entries[0]["secret"])
-            self.secret = entries[0]["secret"]
-            self._auto_save()
-            name = entries[0].get("name") or entries[0].get("issuer") or ""
-            self.time_var.set(f"已匯入: {name}" if name else "已匯入密鑰")
-        else:
-            self._show_qr_picker(entries)
+        self._handle_qr_entries(entries)
 
     def _import_qr(self):
         path = filedialog.askopenfilename(
@@ -187,42 +180,18 @@ class App:
             self.time_var.set("找不到有效的 TOTP 密鑰")
             return
 
-        if len(entries) == 1:
-            self.secret_var.set(entries[0]["secret"])
-            self.secret = entries[0]["secret"]
-            self._auto_save()
-            name = entries[0].get("name") or entries[0].get("issuer") or ""
-            self.time_var.set(f"已匯入: {name}" if name else "已匯入密鑰")
-        else:
-            # Multiple entries — let user pick
-            self._show_qr_picker(entries)
+        self._handle_qr_entries(entries)
 
-    def _show_qr_picker(self, entries: list[dict]):
-        picker = tk.Toplevel(self.root)
-        picker.title("選擇帳號")
-        picker.attributes("-topmost", True)
-        picker.resizable(False, False)
-
-        ttk.Label(picker, text="QR Code 中包含多組密鑰，請選擇:").pack(padx=10, pady=(10, 5))
-
-        listbox = tk.Listbox(picker, width=40, height=min(len(entries), 10))
-        listbox.pack(padx=10, pady=5)
-        for e in entries:
-            label = e.get("name") or e.get("issuer") or e["secret"][:8] + "..."
-            listbox.insert(tk.END, label)
-        listbox.selection_set(0)
-
-        def on_select():
-            sel = listbox.curselection()
-            if sel:
-                entry = entries[sel[0]]
-                self.secret_var.set(entry["secret"])
-                self.secret = entry["secret"]
-                self._auto_save()
-                self.time_var.set(f"已匯入: {entry.get('name') or entry.get('issuer') or '密鑰'}")
-            picker.destroy()
-
-        ttk.Button(picker, text="確定", command=on_select).pack(pady=(5, 10))
+    def _handle_qr_entries(self, entries: list[dict]):
+        if len(entries) > 1:
+            self.time_var.set("QR Code 包含多組密鑰，請只匯出一組")
+            return
+        entry = entries[0]
+        self.secret_var.set(entry["secret"])
+        self.secret = entry["secret"]
+        self._auto_save()
+        name = entry.get("name") or entry.get("issuer") or ""
+        self.time_var.set(f"已匯入: {name}" if name else "已匯入密鑰")
 
     def _toggle_secret(self):
         self.show_secret = not self.show_secret
