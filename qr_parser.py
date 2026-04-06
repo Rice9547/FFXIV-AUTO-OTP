@@ -2,13 +2,24 @@ import base64
 import struct
 from urllib.parse import urlparse, parse_qs, unquote
 
-from PIL import Image
+from PIL import Image, ImageGrab
 from pyzbar.pyzbar import decode as decode_qr
 
 
 def read_qr_from_image(image_path: str) -> str | None:
     """Read QR code content from an image file. Returns decoded string or None."""
     img = Image.open(image_path)
+    results = decode_qr(img)
+    if results:
+        return results[0].data.decode("utf-8")
+    return None
+
+
+def read_qr_from_clipboard() -> str | None:
+    """Read QR code content from clipboard image. Returns decoded string or None."""
+    img = ImageGrab.grabclipboard()
+    if img is None:
+        return None
     results = decode_qr(img)
     if results:
         return results[0].data.decode("utf-8")
@@ -93,16 +104,8 @@ def parse_otpauth_migration(uri: str) -> list[dict]:
     return results
 
 
-def parse_qr_image(image_path: str) -> list[dict]:
-    """
-    Parse a QR code image and extract TOTP secrets.
-    Returns a list of dicts with 'secret', 'name', 'issuer'.
-    Supports otpauth:// and otpauth-migration:// formats.
-    """
-    content = read_qr_from_image(image_path)
-    if not content:
-        return []
-
+def _parse_qr_content(content: str) -> list[dict]:
+    """Parse QR code content string into TOTP entries."""
     if content.startswith("otpauth-migration://"):
         return parse_otpauth_migration(content)
     elif content.startswith("otpauth://"):
@@ -113,5 +116,20 @@ def parse_qr_image(image_path: str) -> list[dict]:
             name = unquote(parsed.path.lstrip("/"))
             issuer = params.get("issuer", [""])[0]
             return [{"secret": secret, "name": name, "issuer": issuer}]
-
     return []
+
+
+def parse_qr_image(image_path: str) -> list[dict]:
+    """Parse a QR code image file and extract TOTP secrets."""
+    content = read_qr_from_image(image_path)
+    if not content:
+        return []
+    return _parse_qr_content(content)
+
+
+def parse_qr_clipboard() -> list[dict]:
+    """Parse a QR code from clipboard image and extract TOTP secrets."""
+    content = read_qr_from_clipboard()
+    if not content:
+        return []
+    return _parse_qr_content(content)

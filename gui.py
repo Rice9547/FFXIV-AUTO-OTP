@@ -7,7 +7,7 @@ import os
 from totp_generator import generate_otp, get_time_remaining, validate_secret
 from config_manager import save_config, load_config
 from launcher_interact import enter_otp_and_login
-from qr_parser import parse_qr_image
+from qr_parser import parse_qr_image, parse_qr_clipboard
 
 
 class App:
@@ -54,6 +54,7 @@ class App:
         self.btn_toggle = ttk.Button(btn_secret_frame, text="顯示", width=5, command=self._toggle_secret)
         self.btn_toggle.pack(side="left")
         ttk.Button(btn_secret_frame, text="QR", width=3, command=self._import_qr).pack(side="left", padx=(4, 0))
+        ttk.Button(btn_secret_frame, text="貼上", width=4, command=self._paste_qr).pack(side="left", padx=(4, 0))
 
         frame_secret.columnconfigure(1, weight=1)
 
@@ -148,6 +149,26 @@ class App:
             self.time_var.set("啟動器已開啟")
         except Exception as e:
             self.time_var.set(f"啟動失敗: {e}")
+
+    def _paste_qr(self):
+        try:
+            entries = parse_qr_clipboard()
+        except Exception:
+            self.time_var.set("剪貼簿中沒有有效圖片")
+            return
+
+        if not entries:
+            self.time_var.set("剪貼簿中找不到 QR Code")
+            return
+
+        if len(entries) == 1:
+            self.secret_var.set(entries[0]["secret"])
+            self.secret = entries[0]["secret"]
+            self._auto_save()
+            name = entries[0].get("name") or entries[0].get("issuer") or ""
+            self.time_var.set(f"已匯入: {name}" if name else "已匯入密鑰")
+        else:
+            self._show_qr_picker(entries)
 
     def _import_qr(self):
         path = filedialog.askopenfilename(
