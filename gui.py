@@ -11,7 +11,7 @@ class App:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("FFXIV OTP 自動登入")
-        self.root.geometry("420x380")
+        self.root.geometry("420x350")
         self.root.resizable(False, False)
         self.root.attributes("-topmost", True)
 
@@ -78,11 +78,6 @@ class App:
             row=1, column=1, sticky="w", padx=5, pady=(4, 0)
         )
 
-        # === Status Bar ===
-        self.status_var = tk.StringVar(value="就緒")
-        ttk.Label(self.root, textvariable=self.status_var, relief="sunken", anchor="w").pack(
-            fill="x", padx=10, pady=(5, 10)
-        )
 
     def _toggle_secret(self):
         self.show_secret = not self.show_secret
@@ -103,7 +98,7 @@ class App:
         self.delay = self.delay_var.get()
 
         save_config(self.secret, self.launcher_title, self.delay)
-        self.status_var.set("密鑰已儲存")
+        self.time_var.set("密鑰已儲存")
 
     def _update_otp_display(self):
         if self.secret and validate_secret(self.secret):
@@ -119,16 +114,16 @@ class App:
 
     def _copy_otp(self):
         if not self.secret:
-            self.status_var.set("請先設定密鑰")
+            self.time_var.set("請先設定密鑰")
             return
         otp = generate_otp(self.secret)
         self.root.clipboard_clear()
         self.root.clipboard_append(otp)
-        self.status_var.set(f"已複製驗證碼: {otp}")
+        self.time_var.set(f"已複製驗證碼: {otp}")
 
     def _auto_login(self):
         if not self.secret:
-            self.status_var.set("請先設定密鑰")
+            self.time_var.set("請先設定密鑰")
             return
         self._do_auto_login()
 
@@ -137,11 +132,11 @@ class App:
         launcher_title = self.title_var.get().strip() or "FINAL FANTASY XIV 繁體中文版"
         delay = self.delay_var.get()
 
-        self.status_var.set("正在自動登入...")
+        self.time_var.set("正在自動登入...")
 
         def run():
             result = enter_otp_and_login(otp, launcher_title, delay=delay)
-            self.root.after(0, lambda: self.status_var.set(result))
+            self.root.after(0, lambda: self.time_var.set(result))
 
         threading.Thread(target=run, daemon=True).start()
 
