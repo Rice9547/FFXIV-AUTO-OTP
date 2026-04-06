@@ -1,0 +1,4 @@
+pyotp>=2.9.0
+pyautogui>=0.9.54
+pywin32>=306
+pyinstaller>=6.0

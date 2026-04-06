@@ -1,0 +1,162 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import threading
+
+from totp_generator import generate_otp, get_time_remaining, validate_secret
+from config_manager import save_config, load_config
+from launcher_interact import enter_otp_and_login
+
+
+class App:
+    def __init__(self, root: tk.Tk):
+        self.root = root
+        self.root.title("FFXIV OTP 自動登入")
+        self.root.geometry("420x380")
+        self.root.resizable(False, False)
+        self.root.attributes("-topmost", True)
+
+        self.secret = ""
+        self.launcher_title = "FINAL FANTASY XIV 繁體中文版"
+        self.tab_count = 0
+        self.delay = 0.3
+        self.show_secret = False
+
+        self._load_saved_config()
+        self._build_ui()
+        self._update_otp_display()
+
+    def _load_saved_config(self):
+        config = load_config()
+        if config:
+            self.secret = config["secret"]
+            self.launcher_title = config["launcher_window_title"]
+            self.tab_count = config["tab_count_to_otp"]
+            self.delay = config["delay_before_type"]
+
+    def _build_ui(self):
+        # === Secret Section ===
+        frame_secret = ttk.LabelFrame(self.root, text="TOTP 密鑰設定", padding=10)
+        frame_secret.pack(fill="x", padx=10, pady=(10, 5))
+
+        ttk.Label(frame_secret, text="密鑰 (Base32):").grid(row=0, column=0, sticky="w")
+        self.secret_var = tk.StringVar(value=self.secret)
+        self.entry_secret = ttk.Entry(frame_secret, textvariable=self.secret_var, width=30, show="*")
+        self.entry_secret.grid(row=0, column=1, padx=5)
+
+        self.btn_toggle = ttk.Button(frame_secret, text="顯示", width=5, command=self._toggle_secret)
+        self.btn_toggle.grid(row=0, column=2)
+
+        ttk.Button(frame_secret, text="儲存密鑰", command=self._save_secret).grid(
+            row=1, column=0, columnspan=3, pady=(8, 0)
+        )
+
+        # === OTP Display Section ===
+        frame_otp = ttk.LabelFrame(self.root, text="目前驗證碼", padding=10)
+        frame_otp.pack(fill="x", padx=10, pady=5)
+
+        self.otp_var = tk.StringVar(value="------")
+        ttk.Label(frame_otp, textvariable=self.otp_var, font=("Consolas", 28, "bold")).pack()
+
+        self.time_var = tk.StringVar(value="")
+        ttk.Label(frame_otp, textvariable=self.time_var, font=("", 10)).pack()
+
+        btn_frame = ttk.Frame(frame_otp)
+        btn_frame.pack(pady=(8, 0))
+        ttk.Button(btn_frame, text="複製驗證碼", command=self._copy_otp).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="自動登入", command=self._auto_login).pack(side="left", padx=5)
+
+        # === Settings Section ===
+        frame_settings = ttk.LabelFrame(self.root, text="進階設定", padding=10)
+        frame_settings.pack(fill="x", padx=10, pady=5)
+
+        ttk.Label(frame_settings, text="視窗標題:").grid(row=0, column=0, sticky="w")
+        self.title_var = tk.StringVar(value=self.launcher_title)
+        ttk.Entry(frame_settings, textvariable=self.title_var, width=30).grid(row=0, column=1, padx=5)
+
+        ttk.Label(frame_settings, text="Tab 次數:").grid(row=1, column=0, sticky="w", pady=(4, 0))
+        self.tab_var = tk.IntVar(value=self.tab_count)
+        ttk.Spinbox(frame_settings, from_=0, to=10, textvariable=self.tab_var, width=5).grid(
+            row=1, column=1, sticky="w", padx=5, pady=(4, 0)
+        )
+
+        ttk.Label(frame_settings, text="延遲秒數:").grid(row=2, column=0, sticky="w", pady=(4, 0))
+        self.delay_var = tk.DoubleVar(value=self.delay)
+        ttk.Spinbox(frame_settings, from_=0.1, to=3.0, increment=0.1,
+                     textvariable=self.delay_var, width=5).grid(
+            row=2, column=1, sticky="w", padx=5, pady=(4, 0)
+        )
+
+        # === Status Bar ===
+        self.status_var = tk.StringVar(value="就緒")
+        ttk.Label(self.root, textvariable=self.status_var, relief="sunken", anchor="w").pack(
+            fill="x", padx=10, pady=(5, 10)
+        )
+
+    def _toggle_secret(self):
+        self.show_secret = not self.show_secret
+        self.entry_secret.config(show="" if self.show_secret else "*")
+        self.btn_toggle.config(text="隱藏" if self.show_secret else "顯示")
+
+    def _save_secret(self):
+        secret = self.secret_var.get().strip()
+        if not secret:
+            messagebox.showwarning("警告", "請輸入 TOTP 密鑰")
+            return
+        if not validate_secret(secret):
+            messagebox.showerror("錯誤", "無效的 Base32 密鑰，請確認格式正確")
+            return
+
+        self.secret = secret
+        self.launcher_title = self.title_var.get().strip() or "FINAL FANTASY XIV 繁體中文版"
+        self.tab_count = self.tab_var.get()
+        self.delay = self.delay_var.get()
+
+        save_config(self.secret, self.launcher_title, self.tab_count, self.delay)
+        self.status_var.set("密鑰已儲存")
+
+    def _update_otp_display(self):
+        if self.secret and validate_secret(self.secret):
+            otp = generate_otp(self.secret)
+            self.otp_var.set(f"{otp[:3]} {otp[3:]}")
+            remaining = get_time_remaining()
+            self.time_var.set(f"剩餘 {remaining} 秒")
+        else:
+            self.otp_var.set("------")
+            self.time_var.set("請先設定密鑰")
+
+        self.root.after(1000, self._update_otp_display)
+
+    def _copy_otp(self):
+        if not self.secret:
+            self.status_var.set("請先設定密鑰")
+            return
+        otp = generate_otp(self.secret)
+        self.root.clipboard_clear()
+        self.root.clipboard_append(otp)
+        self.status_var.set(f"已複製驗證碼: {otp}")
+
+    def _auto_login(self):
+        if not self.secret:
+            self.status_var.set("請先設定密鑰")
+            return
+        self._do_auto_login()
+
+    def _do_auto_login(self):
+        otp = generate_otp(self.secret)
+        launcher_title = self.title_var.get().strip() or "FINAL FANTASY XIV"
+        tab_count = self.tab_var.get()
+        delay = self.delay_var.get()
+
+        self.status_var.set("正在自動登入...")
+
+        def run():
+            result = enter_otp_and_login(otp, launcher_title, tab_count, delay)
+            self.root.after(0, lambda: self.status_var.set(result))
+
+        threading.Thread(target=run, daemon=True).start()
+
+
+def run():
+    root = tk.Tk()
+    App(root)
+    root.mainloop()
