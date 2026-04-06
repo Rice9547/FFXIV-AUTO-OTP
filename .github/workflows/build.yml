@@ -27,6 +27,7 @@ jobs:
           --hidden-import=win32con
           --hidden-import=win32process
           --hidden-import=win32api
+          --collect-all tkinter
           main.py
 
       - name: Upload to Release
