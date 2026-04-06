@@ -48,7 +48,7 @@ class App:
 
         frame_secret.columnconfigure(1, weight=1)
 
-        ttk.Button(frame_secret, text="儲存密鑰", command=self._save_secret).grid(
+        ttk.Button(frame_secret, text="儲存設定", command=self._save_secret).grid(
             row=2, column=0, columnspan=3, pady=(8, 0)
         )
 
@@ -102,7 +102,7 @@ class App:
         self.delay = self.delay_var.get()
 
         save_config(self.secret, self.launcher_title, self.delay)
-        self.time_var.set("密鑰已儲存")
+        self.time_var.set("設定已儲存")
 
     def _update_otp_display(self):
         if self.secret and validate_secret(self.secret):
