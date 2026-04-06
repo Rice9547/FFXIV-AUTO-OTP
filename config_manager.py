@@ -46,12 +46,13 @@ def decrypt_secret(encrypted_b64: str) -> str:
 
 
 def save_config(secret: str, launcher_title: str = "FINAL FANTASY XIV 繁體中文版",
-                delay: float = 0.3) -> None:
+                delay: float = 0.3, launcher_path: str = "") -> None:
     """Save encrypted secret and settings to config file."""
     config = {
         "encrypted_secret": encrypt_secret(secret),
         "launcher_window_title": launcher_title,
         "delay_before_type": delay,
+        "launcher_path": launcher_path,
     }
     config_path = get_config_path()
     with open(config_path, "w", encoding="utf-8") as f:
@@ -71,6 +72,7 @@ def load_config() -> dict | None:
             "secret": secret,
             "launcher_window_title": config.get("launcher_window_title", "FINAL FANTASY XIV 繁體中文版"),
             "delay_before_type": config.get("delay_before_type", 0.3),
+            "launcher_path": config.get("launcher_path", r"C:\Program Files\USERJOY GAMES\FINAL FANTASY XIV TC\boot"),
         }
     except Exception:
         return None
