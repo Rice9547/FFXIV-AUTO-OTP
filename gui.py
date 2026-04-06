@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, filedialog
 import threading
 import subprocess
 import os
@@ -13,7 +13,6 @@ class App:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("FFXIV OTP 自動登入")
-        self.root.geometry("420x420")
         self.root.resizable(False, False)
         self.root.attributes("-topmost", True)
 
@@ -22,9 +21,11 @@ class App:
         self.launcher_path = r"C:\Program Files\USERJOY GAMES\FINAL FANTASY XIV TC\boot"
         self.delay = 0.3
         self.show_secret = False
+        self._saving = False
 
         self._load_saved_config()
         self._build_ui()
+        self._bind_auto_save()
         self._update_otp_display()
 
     def _load_saved_config(self):
@@ -51,10 +52,6 @@ class App:
         self.btn_toggle.grid(row=1, column=2, pady=(4, 0))
 
         frame_secret.columnconfigure(1, weight=1)
-
-        ttk.Button(frame_secret, text="儲存設定", command=self._save_secret).grid(
-            row=2, column=0, columnspan=3, pady=(8, 0)
-        )
 
         # === OTP Display Section ===
         frame_otp = ttk.LabelFrame(self.root, text="目前驗證碼", padding=10)
@@ -96,6 +93,32 @@ class App:
 
         frame_settings.columnconfigure(1, weight=1)
 
+    def _bind_auto_save(self):
+        # Secret: validate and save when focus leaves the entry
+        self.entry_secret.bind("<FocusOut>", lambda e: self._auto_save())
+        # Other settings: save on any change
+        self.path_var.trace_add("write", lambda *_: self._auto_save())
+        self.title_var.trace_add("write", lambda *_: self._auto_save())
+        self.delay_var.trace_add("write", lambda *_: self._auto_save())
+
+    def _auto_save(self):
+        if self._saving:
+            return
+        self._saving = True
+        try:
+            secret = self.secret_var.get().strip()
+            if secret and validate_secret(secret):
+                self.secret = secret
+            self.launcher_title = self.title_var.get().strip() or "FINAL FANTASY XIV 繁體中文版"
+            self.launcher_path = self.path_var.get().strip()
+            try:
+                self.delay = self.delay_var.get()
+            except tk.TclError:
+                pass
+            if self.secret:
+                save_config(self.secret, self.launcher_title, self.delay, self.launcher_path)
+        finally:
+            self._saving = False
 
     def _browse_launcher(self):
         current = self.path_var.get().strip()
@@ -126,23 +149,6 @@ class App:
         self.show_secret = not self.show_secret
         self.entry_secret.config(show="" if self.show_secret else "*")
         self.btn_toggle.config(text="隱藏" if self.show_secret else "顯示")
-
-    def _save_secret(self):
-        secret = self.secret_var.get().strip()
-        if not secret:
-            messagebox.showwarning("警告", "請輸入 TOTP 密鑰")
-            return
-        if not validate_secret(secret):
-            messagebox.showerror("錯誤", "無效的 Base32 密鑰，請確認格式正確")
-            return
-
-        self.secret = secret
-        self.launcher_title = self.title_var.get().strip() or "FINAL FANTASY XIV 繁體中文版"
-        self.launcher_path = self.path_var.get().strip()
-        self.delay = self.delay_var.get()
-
-        save_config(self.secret, self.launcher_title, self.delay, self.launcher_path)
-        self.time_var.set("設定已儲存")
 
     def _update_otp_display(self):
         if self.secret and validate_secret(self.secret):
