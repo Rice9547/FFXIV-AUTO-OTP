@@ -69,18 +69,14 @@ def enter_otp_and_login(otp_code: str, launcher_title: str = "FINAL FANTASY XIV 
     if not focus_window(hwnd):
         return "無法將啟動器視窗帶到前景"
 
-    time.sleep(delay)
+    time.sleep(max(delay, 0.5))
 
     # Tab to the OTP field if needed
     for _ in range(tab_count):
         pyautogui.press("tab")
         time.sleep(0.1)
 
-    # Click on the OTP field area - select all existing text and replace
-    pyautogui.hotkey("ctrl", "a")
-    time.sleep(0.05)
-
-    # Type the 6-digit OTP code
+    # Type the 6-digit OTP code (field should be empty on login page)
     pyautogui.typewrite(otp_code, interval=0.03)
     time.sleep(0.2)
 
