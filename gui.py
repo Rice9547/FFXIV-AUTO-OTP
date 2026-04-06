@@ -7,6 +7,7 @@ import os
 from totp_generator import generate_otp, get_time_remaining, validate_secret
 from config_manager import save_config, load_config
 from launcher_interact import enter_otp_and_login
+from qr_parser import parse_qr_image
 
 
 class App:
@@ -41,15 +42,18 @@ class App:
         frame_secret = ttk.LabelFrame(self.root, text="TOTP 密鑰設定", padding=10)
         frame_secret.pack(fill="x", padx=10, pady=(10, 5))
 
-        ttk.Label(frame_secret, text="支援 Base32 密鑰或 otpauth:// 網址").grid(
+        ttk.Label(frame_secret, text="支援 Base32 密鑰、otpauth:// 網址或 QR Code 圖片").grid(
             row=0, column=0, columnspan=3, sticky="w"
         )
         self.secret_var = tk.StringVar(value=self.secret)
         self.entry_secret = ttk.Entry(frame_secret, textvariable=self.secret_var, width=30, show="*")
         self.entry_secret.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
 
-        self.btn_toggle = ttk.Button(frame_secret, text="顯示", width=5, command=self._toggle_secret)
-        self.btn_toggle.grid(row=1, column=2, pady=(4, 0))
+        btn_secret_frame = ttk.Frame(frame_secret)
+        btn_secret_frame.grid(row=1, column=2, pady=(4, 0))
+        self.btn_toggle = ttk.Button(btn_secret_frame, text="顯示", width=5, command=self._toggle_secret)
+        self.btn_toggle.pack(side="left")
+        ttk.Button(btn_secret_frame, text="QR", width=3, command=self._import_qr).pack(side="left", padx=(4, 0))
 
         frame_secret.columnconfigure(1, weight=1)
 
@@ -144,6 +148,60 @@ class App:
             self.time_var.set("啟動器已開啟")
         except Exception as e:
             self.time_var.set(f"啟動失敗: {e}")
+
+    def _import_qr(self):
+        path = filedialog.askopenfilename(
+            title="選擇 QR Code 圖片",
+            filetypes=[("圖片檔", "*.png *.jpg *.jpeg *.bmp *.gif"), ("所有檔案", "*.*")]
+        )
+        if not path:
+            return
+        try:
+            entries = parse_qr_image(path)
+        except Exception:
+            self.time_var.set("無法讀取 QR Code")
+            return
+
+        if not entries:
+            self.time_var.set("找不到有效的 TOTP 密鑰")
+            return
+
+        if len(entries) == 1:
+            self.secret_var.set(entries[0]["secret"])
+            self.secret = entries[0]["secret"]
+            self._auto_save()
+            name = entries[0].get("name") or entries[0].get("issuer") or ""
+            self.time_var.set(f"已匯入: {name}" if name else "已匯入密鑰")
+        else:
+            # Multiple entries — let user pick
+            self._show_qr_picker(entries)
+
+    def _show_qr_picker(self, entries: list[dict]):
+        picker = tk.Toplevel(self.root)
+        picker.title("選擇帳號")
+        picker.attributes("-topmost", True)
+        picker.resizable(False, False)
+
+        ttk.Label(picker, text="QR Code 中包含多組密鑰，請選擇:").pack(padx=10, pady=(10, 5))
+
+        listbox = tk.Listbox(picker, width=40, height=min(len(entries), 10))
+        listbox.pack(padx=10, pady=5)
+        for e in entries:
+            label = e.get("name") or e.get("issuer") or e["secret"][:8] + "..."
+            listbox.insert(tk.END, label)
+        listbox.selection_set(0)
+
+        def on_select():
+            sel = listbox.curselection()
+            if sel:
+                entry = entries[sel[0]]
+                self.secret_var.set(entry["secret"])
+                self.secret = entry["secret"]
+                self._auto_save()
+                self.time_var.set(f"已匯入: {entry.get('name') or entry.get('issuer') or '密鑰'}")
+            picker.destroy()
+
+        ttk.Button(picker, text="確定", command=on_select).pack(pady=(5, 10))
 
     def _toggle_secret(self):
         self.show_secret = not self.show_secret

@@ -14,7 +14,10 @@ pyinstaller --onefile --windowed ^
   --hidden-import=win32con ^
   --hidden-import=win32process ^
   --hidden-import=win32api ^
+  --hidden-import=pyzbar ^
+  --hidden-import=PIL ^
   --collect-all tkinter ^
+  --collect-all pyzbar ^
   --add-binary "%PYTHON_BASE%\DLLs\_tkinter.pyd;." ^
   --add-binary "%PYTHON_BASE%\DLLs\tcl86t.dll;." ^
   --add-binary "%PYTHON_BASE%\DLLs\tk86t.dll;." ^
