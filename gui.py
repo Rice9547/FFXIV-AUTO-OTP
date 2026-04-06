@@ -11,7 +11,7 @@ class App:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("FFXIV OTP 自動登入")
-        self.root.geometry("420x350")
+        self.root.geometry("420x380")
         self.root.resizable(False, False)
         self.root.attributes("-topmost", True)
 
@@ -36,16 +36,20 @@ class App:
         frame_secret = ttk.LabelFrame(self.root, text="TOTP 密鑰設定", padding=10)
         frame_secret.pack(fill="x", padx=10, pady=(10, 5))
 
-        ttk.Label(frame_secret, text="密鑰 (Base32):").grid(row=0, column=0, sticky="w")
+        ttk.Label(frame_secret, text="支援 Base32 密鑰或 otpauth:// 網址").grid(
+            row=0, column=0, columnspan=3, sticky="w"
+        )
         self.secret_var = tk.StringVar(value=self.secret)
         self.entry_secret = ttk.Entry(frame_secret, textvariable=self.secret_var, width=30, show="*")
-        self.entry_secret.grid(row=0, column=1, padx=5)
+        self.entry_secret.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
 
         self.btn_toggle = ttk.Button(frame_secret, text="顯示", width=5, command=self._toggle_secret)
-        self.btn_toggle.grid(row=0, column=2)
+        self.btn_toggle.grid(row=1, column=2, pady=(4, 0))
+
+        frame_secret.columnconfigure(1, weight=1)
 
         ttk.Button(frame_secret, text="儲存密鑰", command=self._save_secret).grid(
-            row=1, column=0, columnspan=3, pady=(8, 0)
+            row=2, column=0, columnspan=3, pady=(8, 0)
         )
 
         # === OTP Display Section ===
